@@ -167,7 +167,7 @@ class ScannedSampleDB():
         scanned_items = self.get_items_scanned_in_session(self.session_id)
         not_scanned_items = self.get_items_not_scanned_in_session(self.session_id)
         with open(report_filename, 'w') as outfile:
-            outfile.write("Datetime; Item; Column")
+            outfile.write("Datetime; Item; Column\n")
             for item in scanned_items:
                 outfile.write(f"{item[0]}; {item[1]}; {item[2]}\n")
             for item in not_scanned_items:
