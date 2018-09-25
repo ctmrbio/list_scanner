@@ -166,7 +166,6 @@ class ListScanner(BaseWidget):
             self.has_saved = True
 
 
-# TODO: incomplete
 class ExportOldSession(BaseWidget):
     def __init__(self):
         super(ExportOldSession, self).__init__("Export old session")
@@ -210,6 +209,9 @@ class ExportOldSession(BaseWidget):
         self.close()
 
 
+def main():
+    pyforms.start_app(ListScanner)
+
 
 if __name__ == "__main__":
-    pyforms.start_app(ListScanner)
+    main()
