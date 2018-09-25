@@ -14,7 +14,7 @@ from pyforms import BaseWidget
 from pyforms.controls import (
     ControlLabel, ControlDir, ControlText, ControlButton, 
     ControlFile, ControlProgress, ControlTextArea, 
-    ControlCheckBox, ControlImage, ControlList
+    ControlCheckBox, ControlImage, ControlList, ControlCombo
 )
 from AnyQt import QtCore
 import cv2
@@ -52,10 +52,14 @@ class ListScanner(BaseWidget):
             " 3. Select an output file.",
             " 4. Press 'Save and exit' to save a record of the current session and exit.",
             " NOTE: The TAB and ENTER keys have been hardcoded to submit a scanned item,",
-            "       you thus need to use the mouse to switch between GUI buttons and fields.",
+            "       you thus need to use the mouse to activate GUI buttons and focus on fields.",
             ])
         )
         self._inputfile = ControlFile(label="Input list", helptext="csv, tsv, or xlsx")
+        self._scantype_combo = ControlCombo()
+        self._scantype_combo.add_item("Manual scan (one by one)")
+        self._scantype_combo.add_item("Load FluidX scans (load CSV list)")
+        self._scantype_combo.current_index_changed_event = self.__scantype_combo_action
         self._headers_checkbox = ControlCheckBox(label="List has headers")
         self._load_button = ControlButton(label="Load input file")
         self._load_button.value = self.__load_inputfile
@@ -64,6 +68,13 @@ class ListScanner(BaseWidget):
         self._scanbutton = ControlButton(label="Check for item in list(s)")
         self._scanbutton.value = self.__scanbutton_action
         self._progress = ControlProgress(label="%p% items scanned")
+
+        self._fluidx_file = ControlFile(label="FluidX file", helptext="csv")
+        self._load_fluidx_button = ControlButton(label="Load FluidX scans")
+        self._load_fluidx_button.value = self.__load_fluidx_button_action
+        self._fluidx_file.hide()
+        self._load_fluidx_button.hide()
+
         self._textarea = ControlTextArea(label="Session log:")
         
         self._outputfolder = ControlDir(label="Output folder",
@@ -76,7 +87,9 @@ class ListScanner(BaseWidget):
 
         self.formset = [
             ('_toptext', ' ', '_toplogo'),
+            ('_scantype_combo', ' ', ' '),
             ('_inputfile', '_headers_checkbox', '_load_button'),
+            ('_fluidx_file', '_load_fluidx_button'),
             ('_scanfield', '_scanbutton', '_progress'),
             '_textarea',
             ('_outputfolder', '_save_button', ' '),
@@ -97,6 +110,19 @@ class ListScanner(BaseWidget):
     def _sessionlog(self, message):
         self._textarea.__add__(f"{datetime.now()}: {message}")
 
+    def __scantype_combo_action(self, idx):
+        if idx == 1:
+            self._fluidx_file.show()
+            self._load_fluidx_button.show()
+            self._scanfield.hide()
+            self._scanbutton.hide()
+        elif idx == 0:
+            self._fluidx_file.hide()
+            self._load_fluidx_button.hide()
+            self._scanfield.show()
+            self._scanbutton.show()
+        self._sessionlog(f"Changed scan type to: {self._scantype_combo.value}")
+
     def __load_inputfile(self):
         filename = self._inputfile.value
         if Path(filename).is_file():
@@ -111,15 +137,8 @@ class ListScanner(BaseWidget):
                 " Try loading different file!"
             )
 
-    def __scanbutton_action(self):
-        scanned_item = self._scanfield.value
-        if not scanned_item:
-            return False
+    def __search_scanned_item(self, scanned_item):
         item = self.db.find_item(scanned_item)
-        if item.id:
-            self._sessionlog(f"Found item {item.item} in column {item.column}")
-        else:
-            self._sessionlog(f"WARNING: Could not find item {item.item} in lists!")
         self.db.register_scanned_item(item)
         scanned_items = self.db.get_items_scanned_in_session(self.db.session_id)
         distinct_scanned_items = set((item[1:] for item in scanned_items))
@@ -128,7 +147,33 @@ class ListScanner(BaseWidget):
             self._sessionlog(f"COMPLETED: All {self.sample_lists.total_items} items"
                 f" in file {self.sample_lists.filename} have been scanned."
             )
+        return item
+
+    def __scanbutton_action(self):
+        scanned_item = self._scanfield.value
+        if not scanned_item:
+            return False
+        item = self.__search_scanned_item(scanned_item)
+        if item.id:
+            self._sessionlog(f"Found item {item.item} in column {item.column}")
+        else:
+            self._sessionlog(f"Could not find item {item.item} in lists!")
         self._scanfield.value = ""
+
+    def __load_fluidx_button_action(self):
+        if not Path(self._fluidx_file.value).is_file():
+            self._sessionlog("ERROR: No FluidX file selected!")
+            return 
+        if not self.sample_lists:
+            self._sessionlog("ERROR: Load a sample list before loading FluidX file.")
+            return
+        scanned_items = self.sample_lists.scan_fluidx_list(self._fluidx_file.value)
+        for position, barcode, _, rack_id in scanned_items:
+            item = self.__search_scanned_item(barcode)
+            if item.id:
+                self._sessionlog(f"Found item {item.item} from pos {position} in rack {rack_id} in column {item.column}")
+            else:
+                self._sessionlog(f"Could not find item {item.item} in lists!")
 
     def __save_button_action(self):
         outfolder = Path(self._outputfolder.value)

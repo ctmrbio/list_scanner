@@ -107,7 +107,7 @@ class ScannedSampleDB():
         ).fetchall()
 
         if len(result) > 1:
-            logging.error("Found more than one item match!")
+            logging.error("Found more than one item match for '%s'!", search_item)
         try:
             item_id, column = result[0]
             item = Item(item_id, search_item, column)
@@ -206,3 +206,16 @@ class SampleList():
             items = pd.read_csv(self.filename, header=header, engine="python", sep=r'\s+')
         logging.info("Data shape is (rows, columns): %s", items.shape)
         self.total_items = self.db.register_items(items.to_dict(orient="list"))
+
+    @staticmethod
+    def scan_fluidx_list(fluidx_file):
+        items = pd.read_csv(fluidx_file, header=None)
+        logging.info("FluidX shape is (rows, columns): %s", items.shape)
+        return items.values.tolist()
+
+
+
+
+        
+
+
