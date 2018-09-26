@@ -26,3 +26,6 @@ The main program file is `list_scanner.py`, which will open a GUI with some basi
 instructions.  Note that both the Enter and Tab keys have been configured to
 trigger a search for whatever item is currently entered in the Scanning field.
 You thus have to use the mouse to navigate the GUI.
+
+The program can optionally read scans from a FluidX CSV file containing scanned
+tubes. Select how to read scans using the dropdown list above all other controls.
