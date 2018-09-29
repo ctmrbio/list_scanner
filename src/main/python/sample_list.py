@@ -1,13 +1,15 @@
 from pathlib import Path
-import pandas as pd
-import logging
-import sqlite3
 from uuid import uuid1
 from datetime import datetime
 from collections import namedtuple
+import logging
+import sqlite3
+import csv
+
+import pandas as pd  # TODO: Get rid of dependency
 
 Item = namedtuple("Item", ["id", "item", "column"])
-DATETIMEFMT = "%Y-%m-%d %H:%M:%S"
+DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 class ScannedSampleDB():
     """
@@ -58,7 +60,7 @@ class ScannedSampleDB():
         Register a session.
         """
         self.session_id = str(uuid1())
-        self.session_datetime = datetime.now().strftime(DATETIMEFMT)
+        self.session_datetime = datetime.now().strftime(DATETIME_FMT)
         session_data = (self.session_id, filename, self.session_datetime)
         logging.debug(session_data)
         self.db.execute(
@@ -80,7 +82,10 @@ class ScannedSampleDB():
             if isinstance(column, str):
                 column = column.strip()
             items = [str(item).strip() for item in items if not pd.isnull(item)]
-            logging.debug(f"Inserting {len(items)} items from column named '{column}'")
+            logging.debug("Inserting {} items from column named '{}'".format(
+                len(items),
+                column
+            ))
             items_to_insert = [(self.session_id, column, item) for item in items]
             self.db.executemany(
                 """
@@ -122,7 +127,7 @@ class ScannedSampleDB():
             INSERT INTO scanned_item
             VALUES (?, ?, ?, ?)
             """,
-            (item.id, self.session_id, item.item, datetime.now().strftime(DATETIMEFMT))
+            (item.id, self.session_id, item.item, datetime.now().strftime(DATETIME_FMT))
         )
         self.db.commit()
     
@@ -163,15 +168,22 @@ class ScannedSampleDB():
         return result
 
     def export_session_report(self, report_filename):
-        logging.info(f"Exporting {self.session_id} to {report_filename}")
+        logging.info("Exporting {} to {}".format(
+            self.session_id,
+            report_filename,
+        ))
         scanned_items = self.get_items_scanned_in_session(self.session_id)
         not_scanned_items = self.get_items_not_scanned_in_session(self.session_id)
         with open(report_filename, 'w') as outfile:
             outfile.write("Datetime; Item; Column\n")
             for item in scanned_items:
-                outfile.write(f"{item[0]}; {item[1]}; {item[2]}\n")
+                outfile.write("{}; {}; {}\n".format(
+                    item[0], item[1], item[2],
+                ))
             for item in not_scanned_items:
-                outfile.write(f";{item[0]}; {item[1]}\n")
+                outfile.write(";{}; {}\n".format(
+                    item[0], item[1],
+                ))
 
     
 
