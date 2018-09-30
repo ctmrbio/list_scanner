@@ -1,31 +1,37 @@
 # CTMR list scanning application
 A small GUI wrapper over an SQLite3-backed list scanning tool.
 
-## Dependencies
-It is recommended to create a conda environment with pip installed,
-and then use pip to install pyforms and dependencies. Below are the main
-dependencies and their tested versions listed.
+## Development
+Please refer to the [fbs manual](https://build-system.fman.io/manual/) for details on how
+to work with `fbs`. 
 
-- pyforms (3.0.0)
-- pandas (0.23.4)
-- xlrd (1.1.0)
-- pyqt5 (5.11.2)
-- opencv-python (3.4.3.18)
+### Dependencies
+The repo contains [conda environment files](https://conda.io/docs/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) to
+build a suitable development environment on both Windows and Linux. 
+The code structure is based on the template provided by [fman build system (fbs)](https://build-system.fman.io/).
+Below are the main dependencies and their tested versions listed.
 
-### Manjaro Linux
-The following commands have been tested to work well on Manjaro Linux:
-```
-$ conda create -n list_scanner python=3.7 pip pandas xlrd
-$ conda activate list_scanner
-[list_scanner]$ pip install pyforms opencv-python
-[list_scanner]$ ./scan_lists.py
-```
+- pandas (0.23.4) -- To easily read CSV and Excel into tables
+- xlrd (1.1.0) -- Required for Excel functionality of Pandas
+- pyqt5 (5.9.2) -- Recommended version for use with fbs
+- fbs (0.1.7) -- The fman build system, use to create cross-platform installable packages
 
-## Running
-The main program file is `list_scanner.py`, which will open a GUI with some basic
-instructions.  Note that both the Enter and Tab keys have been configured to
-trigger a search for whatever item is currently entered in the Scanning field.
-You thus have to use the mouse to navigate the GUI.
+The conda development environment files also contain
+[rope](https://github.com/python-rope/rope) and
+[pylint](https://www.pylint.org/) to simplify development a bit.
 
-The program can optionally read scans from a FluidX CSV file containing scanned
-tubes. Select how to read scans using the dropdown list above all other controls.
+### Running 
+To run the program when developing, activate the environment and call `python -m fbs run`.
+
+### Freezing
+To freeze the package into a "folder"-style distribution, call `python -m fbs freeze`. 
+
+### Create installer
+To create an installer, call `python -m fbs installer`. Note that this
+requires [NSIS](http://nsis.sourceforge.net/Main_Page) on Windows.
+
+
+## Artwork credits
+Scanner icons made by [Freepik](http://www.freepik.com) from [Flaticon](https://www.flaticon.com/) is licensed by [Creative Commons BY 3.0](http://creativecommons.org/licenses/by/3.0/).
+
+CTMR and bacteria artwork by [Ina Schuppe Koistinen](http://www.inasakvareller.se/). Used with permission.
