@@ -4,6 +4,7 @@ __author__ = "Fredrik Boulund"
 __date__ = "2018"
 
 from datetime import datetime
+from pathlib import Path
 import sys
 
 from fbs_runtime.application_context import ApplicationContext, cached_property
@@ -38,6 +39,7 @@ class MainWindow(QWidget):
 
         self.fluidx = ""
         self.search_list = ""
+        self.sample_list = None
         self.dbfile = "CTMR_scanned_items.sqlite3"
         self.db = ScannedSampleDB(dbfile=self.dbfile)
         self._session_saved = False
@@ -74,13 +76,14 @@ class MainWindow(QWidget):
         # Search: select and load lists
         self._input_search_list_button = QPushButton("Select search list")
         self._input_search_list_button.clicked.connect(self.select_search_list)
-        headers_checkbox = QCheckBox("Headers")
+        self._headers_checkbox = QCheckBox("Headers")
         load_search_list_button = QPushButton("Load search list")
+        load_search_list_button.clicked.connect(self.load_search_list)
         
         search_layout = QFormLayout()
         list_headers_hbox = QHBoxLayout()
         list_headers_hbox.addWidget(self._input_search_list_button)
-        list_headers_hbox.addWidget(headers_checkbox)
+        list_headers_hbox.addWidget(self._headers_checkbox)
         search_layout.addRow("1. Select list:", list_headers_hbox)
         search_layout.addRow("2. Load list:", load_search_list_button)
         self._search_list_group = QGroupBox("Select list of samples to search for")
@@ -197,9 +200,56 @@ class MainWindow(QWidget):
         self._input_search_list_button.setText(self.search_list)
         self.session_log("Selected search list '{}'".format(self.search_list))
     
+    def load_search_list(self):
+        if Path(self.search_list).is_file():
+            self.db.register_session(self.search_list)
+            self.sample_list = SampleList(
+                self.search_list,
+                self.db,
+                self._headers_checkbox.isChecked()
+            )
+            self.session_log("Started new session: {}".format(
+                self.db.session_id
+            ))
+            self.session_log("Loaded {} containing {} items.".format(
+                self.search_list,
+                self.sample_list.total_items,
+            ))
+            self._search_progress.setMaximum(self.sample_list.total_items)
+        else:
+            self.session_log("Cannot load file '{}'.".format(
+                self.search_list
+            ))
+
+    
     def search_scanned_item(self):
-        self.session_log("Searching for item '{}'".format(self._scanfield.text()))
+        scanned_item = self._scanfield.text()
+        if not scanned_item:
+            return False
+        item = self.db.find_item(scanned_item)
+        self.db.register_scanned_item(item)
         self._scanfield.setText("")
+
+        if item.id:
+            self.session_log("Found item {} in column {}".format(
+                item.item, item.column,
+            ))
+        else:
+            self.session_log("Could not find item {} in lists.".format(
+                item.item
+            ))
+
+        # Update progressbar
+        scanned_items = self.db.get_items_scanned_in_session(self.db.session_id)
+        distinct_scanned_items = set((item[1:] for item in scanned_items))
+        self._search_progress.setValue(len(distinct_scanned_items))
+        if self._search_progress.value == self._search_progress.maximum:
+            self.session_log("COMPLETED: All {} items ".format(
+                self.sample_list.total_items
+                ) + "in file {} have been scanned.".format(
+                self.sample_list.filename
+                )
+            )
 
     def register_scanned_item(self):
         self.session_log("Registering item '{}' of type '{}'".format(
