@@ -92,7 +92,7 @@ class MainWindow(QWidget):
         # Search: Manual scan
         self._scanfield = QLineEdit(placeholderText="Scan/type item ID")
         search_scan_button = QPushButton("Search for item")
-        search_scan_button.clicked.connect(self.search_scanned_item)
+        search_scan_button.clicked.connect(self.scan_button_action)
 
         manual_scan_layout = QGridLayout()
         manual_scan_layout.addWidget(self._scanfield, 0, 0)
@@ -220,16 +220,12 @@ class MainWindow(QWidget):
             self.session_log("Cannot load file '{}'.".format(
                 self.search_list
             ))
-
     
-    def search_scanned_item(self):
+    def scan_button_action(self):
         scanned_item = self._scanfield.text()
         if not scanned_item:
             return False
-        item = self.db.find_item(scanned_item)
-        self.db.register_scanned_item(item)
-        self._scanfield.setText("")
-
+        item = self.search_scanned_item(scanned_item)
         if item.id:
             self.session_log("Found item {} in column {}".format(
                 item.item, item.column,
@@ -238,6 +234,11 @@ class MainWindow(QWidget):
             self.session_log("Could not find item {} in lists.".format(
                 item.item
             ))
+        self._scanfield.setText("")
+    
+    def search_scanned_item(self, scanned_item):
+        item = self.db.find_item(scanned_item)
+        self.db.register_scanned_item(item)
 
         # Update progressbar
         scanned_items = self.db.get_items_scanned_in_session(self.db.session_id)
@@ -250,6 +251,7 @@ class MainWindow(QWidget):
                 self.sample_list.filename
                 )
             )
+        return item
 
     def register_scanned_item(self):
         self.session_log("Registering item '{}' of type '{}'".format(
@@ -259,7 +261,7 @@ class MainWindow(QWidget):
     
     def select_search_fluidx(self):
         self.fluidx, _ = QFileDialog.getOpenFileName(self, "Select FluidX CSV")
-        self._fluidx_csv_button.setText(self.fluidx)
+        self._search_fluidx_csv_button.setText(self.fluidx)
         self.session_log("Selected FluidX CSV '{}'".format(self.fluidx))
 
     def select_register_fluidx(self):
@@ -268,18 +270,29 @@ class MainWindow(QWidget):
         self.session_log("Selected FluidX CSV '{}'".format(self.fluidx))
     
     def load_search_fluidx(self):
-        if self.fluidx:
-            self.session_log("Loading FluidX CSV: '{}'".format(self.fluidx))
+        if not Path(self.fluidx).is_file():
+            self.session_log("ERROR: Cannot load FluidX file")
+            return
+        if not self.sample_list:
+            self.session_log("ERROR: Load search list before loading FluidX file.")
+            return
+        self.session_log("Loading items from FluidX CSV: '{}'".format(self.fluidx))
+        scanned_items = self.sample_list.scan_fluidx_list(self.fluidx)
+        for position, barcode, _, rack_id in scanned_items:
+            item = self.search_scanned_item(barcode)
+            if item.id:
+                self.session_log("Found item {} from pos {} in rack {} of type {}.".format(
+                    item.item, position, rack_id, item.column,
+                ))
+            else:
+                self.session_log("Could not find item {} in lists!".format(
+                    item.item
+                ))
 
     def load_register_fluidx(self):
         if self.fluidx:
             self.session_log("Loading FluidX CSV: '{}'".format(self.fluidx))
     
-    def update_progressbar(self, value, min=None, max=None):
-        if min: self._search_progress.setMinimum(min)
-        if max: self._search_progress.setMaximum(max)
-        self._search_progress.setValue(value)
-
     def session_log(self, message):
         self._session_log.append("{datetime}: {message}".format(
             datetime=datetime.now(),
@@ -300,7 +313,7 @@ class MainWindow(QWidget):
         if key.key() == QtCore.Qt.Key_Tab:
             selected_scantype = self.scantype_combo.currentText()
             if selected_scantype == "Search: Search for samples in list(s)":
-                self.search_scanned_item()
+                self.scan_button_action()
             elif selected_scantype == "Register: Create sample registration list(s)":
                 self.register_scanned_item()
     
