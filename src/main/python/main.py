@@ -38,6 +38,9 @@ class MainWindow(QWidget):
 
         self.fluidx = ""
         self.search_list = ""
+        self.dbfile = "CTMR_scanned_items.sqlite3"
+        self.db = ScannedSampleDB(dbfile=self.dbfile)
+        self._session_saved = False
 
         info_text = QLabel('\n'.join([
             "CTMR item scanning application.",
@@ -139,12 +142,22 @@ class MainWindow(QWidget):
         self._search_progress = QProgressBar()
         self._search_progress.setMinimum(0)
         self._search_progress.setMaximum(0)
+        self.save_button = QPushButton("Save session log")
+        self.save_button.clicked.connect(self.save_report)
+        self.export_button = QPushButton("Export scanned sample list")
+        self.export_button.clicked.connect(self.export_sample_list)
+        self.exit_button = QPushButton("Exit")
+        self.exit_button.clicked.connect(self.exit)
         session_log_layout = QVBoxLayout()
         session_log_layout.addWidget(self._search_progress)
         session_log_layout.addWidget(self._session_log)
+        button_row = QHBoxLayout()
+        button_row.addWidget(self.save_button)
+        button_row.addWidget(self.export_button)
+        button_row.addWidget(self.exit_button)
+        session_log_layout.addLayout(button_row)
         self._session_log_group = QGroupBox("Session log")
         self._session_log_group.setLayout(session_log_layout)
-        self._session_saved = False
 
         # Overall layout
         layout = QGridLayout()
@@ -168,6 +181,7 @@ class MainWindow(QWidget):
             self._manual_scan_group.show()
             self._search_fluidx_group.show()
             self._register_fluidx_group.hide()
+            self._search_progress.show()
             self._session_log_group.show()
         elif selected_scantype == "Register: Create sample registration list(s)":
             self.scantype_combo.show()
@@ -175,8 +189,8 @@ class MainWindow(QWidget):
             self._manual_scan_group.hide()
             self._search_fluidx_group.hide()
             self._register_fluidx_group.show()
-            self._session_log_group.show()
             self._search_progress.hide()
+            self._session_log_group.show()
     
     def select_search_list(self):
         self.search_list, _ = QFileDialog.getOpenFileName(self, "Select search list")
@@ -221,6 +235,16 @@ class MainWindow(QWidget):
             datetime=datetime.now(),
             message=message,
         ))
+    
+    def save_report(self):
+        self.session_log("Saving report")
+    
+    def export_sample_list(self):
+        self.session_log("Exporting list of samples scanned in this session to {}")
+    
+    def exit(self):
+        self.session_log("Exiting...")
+
 
     def _keypress_event_action(self, key):
         if key.key() == QtCore.Qt.Key_Tab:
