@@ -156,7 +156,7 @@ class MainWindow(QWidget):
         session_log_layout.addWidget(self._session_log)
         button_row = QHBoxLayout()
         button_row.addWidget(self.save_button)
-        button_row.addWidget(self.export_button)
+        #button_row.addWidget(self.export_button)
         button_row.addWidget(self.exit_button)
         session_log_layout.addLayout(button_row)
         self._session_log_group = QGroupBox("Session log")
