@@ -1,0 +1,18 @@
+from enaml.widgets.api import Window, Container, Form, Label, Field, PushButton, FileDialogEx
+
+enamldef ListScanner(Window): window:
+    attr sample_list
+    title = "CTMR List Scanner"
+    Form: 
+        Label:
+            text = "Sample list:"
+        PushButton: load_sample_list: 
+            text = "Load sample list"
+            clicked ::
+                path = FileDialogEx.get_open_file_name(window)
+                if path:
+                    window.sample_list = path
+        Label:
+            text = "Scan field:"
+        Field:
+            text = ""

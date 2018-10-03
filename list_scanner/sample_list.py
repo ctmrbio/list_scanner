@@ -6,7 +6,7 @@ import logging
 import sqlite3
 import csv
 
-import pandas as pd  # TODO: Get rid of dependency
+import tabulator
 
 Item = namedtuple("Item", ["id", "item", "column"])
 DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
@@ -77,6 +77,7 @@ class ScannedSampleDB():
         """
         Register items parsed from a potentially multi-column input file.
         """
+        return -1
         total_items = 0
         for column, items in itemlists.items():
             if isinstance(column, str):
@@ -206,23 +207,23 @@ class SampleList():
 
         if Path(self.filename).suffix.lower() in (".xlsx", ".xls"):
             logging.info("Found excelfile %s", self.filename)
-            items = pd.read_excel(self.filename, header=header)
+            #items = pd.read_excel(self.filename, header=header)
         elif Path(self.filename).suffix.lower() in (".csv"):
             logging.info("Found csv %s", self.filename)
-            items = pd.read_csv(self.filename, header=header, sep=',')
+            #items = pd.read_csv(self.filename, header=header, sep=',')
         elif Path(self.filename).suffix.lower() in (".tsv"):
             logging.info("Found tsv %s", self.filename)
-            items = pd.read_csv(self.filename, header=header, sep='\t')
+            #items = pd.read_csv(self.filename, header=header, sep='\t')
         else:
             logging.info("Found %s, assuming whitespace separated", self.filename)
-            items = pd.read_csv(self.filename, header=header, engine="python", sep=r'\s+')
-        logging.info("Data shape is (rows, columns): %s", items.shape)
-        self.total_items = self.db.register_items(items.to_dict(orient="list"))
+            #items = pd.read_csv(self.filename, header=header, engine="python", sep=r'\s+')
+        #logging.info("Data shape is (rows, columns): %s", items.shape)
+        #self.total_items = self.db.register_items(items.to_dict(orient="list"))
 
     @staticmethod
     def scan_fluidx_list(fluidx_file):
-        items = pd.read_csv(fluidx_file, header=None)
-        logging.info("FluidX shape is (rows, columns): %s", items.shape)
+        #items = pd.read_csv(fluidx_file, header=None)
+        #logging.info("FluidX shape is (rows, columns): %s", items.shape)
         return items.values.tolist()
 
 
