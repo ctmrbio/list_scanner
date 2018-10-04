@@ -16,6 +16,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QPixmap
 
+# Handle sneaky hidden pandas imports for PyInstaller
+import pandas._libs.tslibs.np_datetime
+import pandas._libs.tslibs.nattype
+import pandas._libs.skiplist
+
 from sample_list import SampleList, ScannedSampleDB
 
 
