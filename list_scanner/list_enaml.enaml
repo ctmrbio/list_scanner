@@ -1,17 +1,27 @@
-from enaml.widgets.api import Window, Container, Form, Label, Field, PushButton, FileDialogEx
+from enaml.widgets.api import Window, Container, Form, Label, Field, PushButton, FileDialogEx, CheckBox
+
+from sample_list import SampleList
 
 enamldef ListScanner(Window): window:
     attr sample_list
     title = "CTMR List Scanner"
-    Form: 
-        Label:
-            text = "Sample list:"
-        PushButton: load_sample_list: 
-            text = "Load sample list"
-            clicked ::
-                path = FileDialogEx.get_open_file_name(window)
-                if path:
-                    window.sample_list = path
+    Form:  
+        Container:
+            Label: lbl:
+                text = "Sample list:"
+            PushButton: load_sample_list: 
+                text = "Load sample list"
+                clicked ::
+                    path = FileDialogEx.get_open_file_name(window)
+                    if path:
+                        window.sample_list = path
+                        lbl.text = path
+                        window.sample_list = SampleList(path, "test.sqlite3", header=cb_headers.checked)
+            Label:
+                text = "Data has headers"
+        CheckBox: cb_headers:
+            text = "Headers"
+            checked = False
         Label:
             text = "Scan field:"
         Field:

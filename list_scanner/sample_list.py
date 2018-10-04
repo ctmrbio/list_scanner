@@ -6,7 +6,7 @@ import logging
 import sqlite3
 import csv
 
-import tabulator
+import utils
 
 Item = namedtuple("Item", ["id", "item", "column"])
 DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
@@ -198,26 +198,7 @@ class SampleList():
         self.read_lists()
     
     def read_lists(self):
-        if self.header:
-            header = 0  # Pandas needs the rownumber of the header
-            logging.debug("Reading data with headers on row 0")
-        else:
-            header = None  # Pandas needs None instead of False
-            logging.debug("Reading data without headers")
-
-        if Path(self.filename).suffix.lower() in (".xlsx", ".xls"):
-            logging.info("Found excelfile %s", self.filename)
-            #items = pd.read_excel(self.filename, header=header)
-        elif Path(self.filename).suffix.lower() in (".csv"):
-            logging.info("Found csv %s", self.filename)
-            #items = pd.read_csv(self.filename, header=header, sep=',')
-        elif Path(self.filename).suffix.lower() in (".tsv"):
-            logging.info("Found tsv %s", self.filename)
-            #items = pd.read_csv(self.filename, header=header, sep='\t')
-        else:
-            logging.info("Found %s, assuming whitespace separated", self.filename)
-            #items = pd.read_csv(self.filename, header=header, engine="python", sep=r'\s+')
-        #logging.info("Data shape is (rows, columns): %s", items.shape)
+        utils.read_list(self.filename, self.header)
         #self.total_items = self.db.register_items(items.to_dict(orient="list"))
 
     @staticmethod
