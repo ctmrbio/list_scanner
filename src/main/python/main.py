@@ -2,6 +2,7 @@
 """CTMR list scanner"""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
+__version__ = "0.1.0b"
 
 from datetime import datetime
 from pathlib import Path
@@ -21,12 +22,14 @@ import pandas._libs.tslibs.np_datetime
 import pandas._libs.tslibs.nattype
 import pandas._libs.skiplist
 
-from sample_list import SampleList, ScannedSampleDB
+from sample_list import SampleList, ScannedSampleDB, __version__ as sample_list_version
 
 
 class AppContext(ApplicationContext):           # 1. Subclass ApplicationContext
     def run(self):                              # 2. Implement run()
-        self.window.setWindowTitle("CTMR List Scanner")
+        self.window.setWindowTitle("CTMR List Scanner version {} (SampleList: {})".format(
+            __version__, sample_list_version
+        ))
         self.window.resize(1000, 700)
         self.window.show()
         return self.app.exec_()                 # 3. End run() with this line
@@ -48,19 +51,6 @@ class MainWindow(QWidget):
         self.dbfile = "CTMR_scanned_items.sqlite3"
         self.db = ScannedSampleDB(dbfile=self.dbfile)
         self._session_saved = False
-
-        info_text = QLabel('\n'.join([
-            "CTMR item scanning application.",
-            "Instructions:",
-            " 1. Load a list file (Excel, CSV, TSV, or white-space separated text).",
-            "    List files can have several columns and optionally a header line on top.",
-            " 2. Focus in the scanning field and start scanning.",
-            " 3. Select an output file.",
-            " 4. Press 'Save and exit' to save a record of the current session and exit.",
-            " NOTE: The TAB and ENTER keys have been hardcoded to submit a scanned item,",
-            "       you thus need to use the mouse to activate GUI buttons and focus on fields.",
-            ])
-        )
 
         pixmap_art = QPixmap(appctxt.get_resource("bacteria.png")).scaledToHeight(50)
         art = QLabel()
@@ -178,7 +168,11 @@ class MainWindow(QWidget):
         layout.addWidget(self._register_fluidx_group, 2, 0, 1, 3)
         layout.addWidget(self._session_log_group, 5, 0, 1, 3)
         self.setLayout(layout)
+        self.session_log("Started CTMR List Scanner version {} (SampleList: {})".format(
+            __version__, sample_list_version,
+        ))
         self.select_scantype()  # Set up the default chosen scantype layout
+
     
     def select_scantype(self):
         selected_scantype = self.scantype_combo.currentText()

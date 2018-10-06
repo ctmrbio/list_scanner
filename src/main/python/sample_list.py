@@ -1,3 +1,8 @@
+"""Scanned sample DB (sqlite3) and Sample List classes."""
+__author__ = "Fredrik Boulund"
+__date__ = "2018"
+__version__ = "1.0.0"
+
 from pathlib import Path
 from uuid import uuid1
 from datetime import datetime
@@ -6,7 +11,7 @@ import logging
 import sqlite3
 import csv
 
-import pandas as pd  # TODO: Get rid of dependency
+import pandas as pd
 
 Item = namedtuple("Item", ["id", "item", "column"])
 DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
