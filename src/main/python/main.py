@@ -2,7 +2,7 @@
 """CTMR list scanner"""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "0.1.0b"
+__version__ = "0.2.0b"
 
 from datetime import datetime
 from pathlib import Path
@@ -13,7 +13,7 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import (
     QWidget, QGridLayout, QGroupBox, QFormLayout, QVBoxLayout, QHBoxLayout,
     QPushButton, QFileDialog, QLineEdit, QProgressBar, QLabel, QCheckBox, 
-    QTextEdit, QRadioButton, QComboBox, QMenuBar
+    QTextEdit, QRadioButton, QComboBox, QMenuBar, QListView, QTableView
 )
 from PyQt5.QtGui import QPixmap
 
@@ -24,10 +24,9 @@ import pandas._libs.skiplist
 
 from sample_list import SampleList, ScannedSampleDB, __version__ as sample_list_version
 
-
 class AppContext(ApplicationContext):           # 1. Subclass ApplicationContext
     def run(self):                              # 2. Implement run()
-        self.window.setWindowTitle("CTMR List Scanner version {} (SampleList: {})".format(
+        self.window.setWindowTitle("CTMR List Scanner version {} (SampleList: version {})".format(
             __version__, sample_list_version
         ))
         self.window.resize(1000, 700)
@@ -64,7 +63,7 @@ class MainWindow(QWidget):
         self.scantype_combo = QComboBox()
         self.scantype_combo.addItems([
             "Search: Search for samples in list(s)",
-            "Register: Create sample registration list(s)",
+            #"Register: Create sample registration list(s)",  # Disabled until implemented
         ])
         self.scantype_combo.currentTextChanged.connect(self.select_scantype)
 
@@ -140,9 +139,9 @@ class MainWindow(QWidget):
         self._search_progress = QProgressBar()
         self._search_progress.setMinimum(0)
         self._search_progress.setMaximum(0)
-        self.save_button = QPushButton("Save session log")
+        self.save_button = QPushButton("Save current session log")
         self.save_button.clicked.connect(self.save_report)
-        self.export_button = QPushButton("Export scanned sample list")
+        self.export_button = QPushButton("Export log from old session")
         self.export_button.clicked.connect(self.export_sample_list)
         self.exit_button = QPushButton("Exit")
         self.exit_button.clicked.connect(self.exit)
@@ -151,7 +150,7 @@ class MainWindow(QWidget):
         session_log_layout.addWidget(self._session_log)
         button_row = QHBoxLayout()
         button_row.addWidget(self.save_button)
-        #button_row.addWidget(self.export_button)
+        button_row.addWidget(self.export_button)
         button_row.addWidget(self.exit_button)
         session_log_layout.addLayout(button_row)
         self._session_log_group = QGroupBox("Session log")
@@ -168,7 +167,7 @@ class MainWindow(QWidget):
         layout.addWidget(self._register_fluidx_group, 2, 0, 1, 3)
         layout.addWidget(self._session_log_group, 5, 0, 1, 3)
         self.setLayout(layout)
-        self.session_log("Started CTMR List Scanner version {} (SampleList: {})".format(
+        self.session_log("Started CTMR List Scanner version {} (SampleList: version {})".format(
             __version__, sample_list_version,
         ))
         self.select_scantype()  # Set up the default chosen scantype layout
@@ -321,7 +320,8 @@ class MainWindow(QWidget):
             self.session_log("ERROR: Could not save report to {}".format(outfolder))
     
     def export_sample_list(self):
-        self.session_log("Exporting list of samples scanned in this session to {}")
+        self.export_old_session_window = ExportOldSessionWindow(self, dbfile=self.dbfile)
+        self.export_old_session_window.show()
     
     def exit(self):
         if self._session_saved:
@@ -342,6 +342,110 @@ class MainWindow(QWidget):
             elif selected_scantype == "Register: Create sample registration list(s)":
                 self.register_scanned_item()
     
+
+class ExportOldSessionWindow(QWidget):
+    def __init__(self, parent, dbfile):
+        super(ExportOldSessionWindow, self).__init__()
+        self.setWindowTitle("Export old scanning session")
+        self.resize(700, 400)
+        self.db = ScannedSampleDB(dbfile=dbfile)
+        self._parent = parent
+
+        self.session_list = QTableView()
+        self.session_list.setShowGrid(False)
+        self.session_list.setSelectionBehavior(1)  # Select only rows
+        self.session_list.setSortingEnabled(True)
+        header = ["Datetime", "List filename", "Session ID"]
+        self.session_list.setModel(SessionTableModel(header=header, table_data=self.db.get_sessions_list()))
+        self.session_list.resizeColumnsToContents()
+        self.session_list.resizeRowsToContents()
+
+        self.export_button = QPushButton("Export log from selected session")
+        self.export_button.clicked.connect(self.export_session)
+        self.close_button = QPushButton("Close")
+        self.close_button.clicked.connect(self.close_window)
+
+        layout = QGridLayout()
+        layout.addWidget(self.session_list, 0, 0, 1, 2)
+        layout.addWidget(self.export_button, 1, 0, 1, 1)
+        layout.addWidget(self.close_button, 1, 1, 1, 1)
+        self.setLayout(layout)
+
+    @staticmethod
+    def grouper(iterable, n):
+        """ Group iterable into n-size groups. `iterable` must have a multiple of `n` values."""
+        grouped = []
+        current_group = []
+        for idx, thing in enumerate(iterable, start=1):
+            current_group.append(thing)
+            if idx % 3 == 0:
+                grouped.append(current_group)
+                current_group = []
+        return grouped
+
+    def export_session(self):
+        outfolder = QFileDialog.getExistingDirectory(self, "Select directory to export session report to")
+        if Path(outfolder).is_dir():
+            for selected_row in self.grouper(self.session_list.selectedIndexes(), 3):
+                selected_data = [
+                    self.session_list.model().data(selected_row[0], QtCore.Qt.DisplayRole),
+                    self.session_list.model().data(selected_row[1], QtCore.Qt.DisplayRole),
+                    self.session_list.model().data(selected_row[2], QtCore.Qt.DisplayRole),
+                ]
+                self._export_session_to_folder(
+                    outfolder=outfolder,
+                    datetime=selected_data[0],
+                    filename_stem=Path(selected_data[1]).stem,
+                    session_id=selected_data[2],
+                )
+        else:
+            self._parent.session_log("ERROR: No valid output folder selected")
+
+
+    def _export_session_to_folder(self, outfolder, datetime, filename_stem, session_id):
+        fn_datetime = datetime.replace(":", "-").replace(" ", "_")
+        session_basename = Path("{}_{}_{}".format(
+            fn_datetime, session_id, filename_stem,
+        ))
+        session_report = outfolder / session_basename.with_suffix(".csv")
+        self.db.export_session_report(str(session_report), session_id=session_id)
+        self._parent.session_log("Saved scanning session report to: {}".format(session_report))
+    
+    def close_window(self):
+        self.hide()
+
+
+class SessionTableModel(QtCore.QAbstractTableModel):
+    def __init__(self, header, table_data):
+        super(SessionTableModel, self).__init__()
+        self.header = header
+        self.table_data = table_data
+
+    def rowCount(self, parent):
+        return len(self.table_data)
+    
+    def columnCount(self, parent):
+        return len(self.header)
+    
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        if role == QtCore.Qt.DisplayRole:
+            return self.table_data[index.row()][index.column()]
+
+    def headerData(self, col, orientation, role):
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return self.header[col]
+        return None
+    
+    def sort(self, ncol, order):
+        self.table_data = sorted(self.table_data, key=lambda row: row[ncol])
+        if order == QtCore.Qt.DescendingOrder:
+            self.table_data.reverse()
+        self.layoutChanged.emit()
+
+
+
 
 if __name__ == '__main__':
     appctxt = AppContext()                      # 4. Instantiate the subclass

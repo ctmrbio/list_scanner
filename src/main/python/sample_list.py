@@ -1,7 +1,7 @@
 """Scanned sample DB (sqlite3) and Sample List classes."""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from pathlib import Path
 from uuid import uuid1
@@ -172,13 +172,15 @@ class ScannedSampleDB():
         ).fetchall()
         return result
 
-    def export_session_report(self, report_filename):
+    def export_session_report(self, report_filename, session_id=None):
+        if not session_id:
+            session_id = self.session_id
         logging.info("Exporting {} to {}".format(
-            self.session_id,
+            session_id,
             report_filename,
         ))
-        scanned_items = self.get_items_scanned_in_session(self.session_id)
-        not_scanned_items = self.get_items_not_scanned_in_session(self.session_id)
+        scanned_items = self.get_items_scanned_in_session(session_id)
+        not_scanned_items = self.get_items_not_scanned_in_session(session_id)
         with open(report_filename, 'w') as outfile:
             outfile.write("Datetime; Item; Column\n")
             for item in scanned_items:
@@ -190,7 +192,6 @@ class ScannedSampleDB():
                     item[0], item[1],
                 ))
 
-    
 
 class SampleList():
 
