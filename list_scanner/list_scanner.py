@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 
 import pyforms
-from pyforms import BaseWidget
+from pyforms.basewidget import BaseWidget
 from pyforms.controls import (
     ControlLabel, ControlDir, ControlText, ControlButton, 
     ControlFile, ControlProgress, ControlTextArea, 
@@ -42,7 +42,7 @@ class ListScanner(BaseWidget):
         self.has_saved = False
 
         self._toplogo = ControlImage()
-        self._toplogo.value = cv2.imread("img/CTMR_logo_white_background.jpg")
+        #self._toplogo.value = cv2.imread("img/CTMR_logo_white_background.jpg")  # Crashes in pyforms 4.0
         self._toptext = ControlLabel('\n'.join([
             "CTMR item scanning application.",
             "Instructions:",
