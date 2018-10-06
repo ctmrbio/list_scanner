@@ -18,7 +18,7 @@ The following commands have been tested to work well on Manjaro Linux:
 $ conda create -n list_scanner python=3.7 pip pandas xlrd
 $ conda activate list_scanner
 [list_scanner]$ pip install pyforms opencv-python
-[list_scanner]$ ./scan_lists.py
+[list_scanner]$ list_scanner/list_scanner.py
 ```
 
 ## Running
