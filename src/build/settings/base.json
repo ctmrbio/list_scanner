@@ -1,0 +1,5 @@
+{
+    "app_name": "CTMR list scanner",
+    "main_module": "src/main/python/main.py",
+    "author": "Fredrik Boulund"
+}
