@@ -244,7 +244,7 @@ class MainWindow(QWidget):
     
     def search_scanned_item(self, scanned_item):
         item = self.db.find_item(scanned_item)
-        self.db.register_scanned_item(item)
+        self.db.store_scanned_item(item)
 
         # Update progressbar
         scanned_items = self.db.get_items_scanned_in_session(self.db.session_id)

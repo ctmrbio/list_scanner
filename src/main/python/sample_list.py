@@ -37,6 +37,7 @@ class ScannedSampleDB():
             DROP TABLE IF EXISTS session;
             DROP TABLE IF EXISTS item;
             DROP TABLE IF EXISTS scanned_item;
+            DROP TABLE IF EXISTS registered_item;
             CREATE TABLE session (
                 id TEXT PRIMARY KEY,
                 filename TEXT,
@@ -53,6 +54,15 @@ class ScannedSampleDB():
                 id INTEGER,
                 session TEXT,
                 item TEXT,
+                scanned_datetime TEXT,
+                FOREIGN KEY(session) REFERENCES session(id)
+            )
+            CREATE TABLE registered_item (
+                id INTEGER,
+                session TEXT,
+                item TEXT,
+                sample_type TEXT,
+                box TEXT,
                 scanned_datetime TEXT,
                 FOREIGN KEY(session) REFERENCES session(id)
             )
@@ -78,9 +88,9 @@ class ScannedSampleDB():
         )
         self.db.commit()
 
-    def register_items(self, itemlists):
+    def store_search_items(self, itemlists):
         """
-        Register items parsed from a potentially multi-column input file.
+        Store search items parsed from a potentially multi-column input file.
         """
         total_items = 0
         for column, items in itemlists.items():
@@ -126,7 +136,7 @@ class ScannedSampleDB():
 
         return item
 
-    def register_scanned_item(self, item):
+    def store_scanned_item(self, item):
         self.db.execute(
             """
             INSERT INTO scanned_item
@@ -223,7 +233,7 @@ class SampleList():
             logging.info("Found %s, assuming whitespace separated", self.filename)
             items = pd.read_csv(self.filename, header=header, engine="python", sep=r'\s+')
         logging.info("Data shape is (rows, columns): %s", items.shape)
-        self.total_items = self.db.register_items(items.to_dict(orient="list"))
+        self.total_items = self.db.store_search_items(items.to_dict(orient="list"))
 
     @staticmethod
     def scan_fluidx_list(fluidx_file):
