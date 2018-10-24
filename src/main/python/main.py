@@ -200,6 +200,7 @@ class MainWindow(QWidget):
             self._register_fluidx_group.show()
             self._search_progress.hide()
             self._session_log_group.show()
+            self.db.create_session("REGISTRATION")
     
     def select_search_list(self):
         self.search_list, _ = QFileDialog.getOpenFileName(self, "Select search list")
@@ -329,19 +330,31 @@ class MainWindow(QWidget):
         ))
     
     def save_report(self):
-        if not self.search_list:
+        selected_scantype = self.scantype_combo.currentText()
+        if selected_scantype == "Search: Search for samples in list(s)" and not self.search_list:
             self.session_log("ERROR: Cannot save report without first loading search list.")
             return
+
         outfolder = QFileDialog.getExistingDirectory(self, "Select directory to save report to")
+
         if Path(outfolder).is_dir():
-            input_stem = Path(self.search_list).stem
+            if selected_scantype == "Register: Create sample registration list(s)":
+                input_stem = "Registered_samples"
+            else:
+                input_stem = Path(self.search_list).stem
+
             fn_datetime = self.db.session_datetime.replace(":", "-").replace(" ", "_")
             session_basename = Path("{}_{}_{}".format(
                 fn_datetime, self.db.session_id, input_stem,
             ))
             session_report = outfolder / session_basename.with_suffix(".csv")
-            self.db.export_session_report(str(session_report))
+
+            if selected_scantype == "Register: Create sample registration list(s)":
+                self.db.export_register_report(str(session_report))
+            else:
+                self.db.export_session_report(str(session_report))
             self.session_log("Saved scanning session report to: {}".format(session_report))
+
             session_log = outfolder / session_basename.with_suffix(".log")
             with open(str(session_log), 'w') as outf:
                 outf.write(self._session_log.toPlainText())
@@ -349,7 +362,7 @@ class MainWindow(QWidget):
             self._session_saved = True
         else:
             self.session_log("ERROR: Could not save report to {}".format(outfolder))
-    
+
     def export_sample_list(self):
         self.export_old_session_window = ExportOldSessionWindow(self, dbfile=self.dbfile)
         self.export_old_session_window.show()

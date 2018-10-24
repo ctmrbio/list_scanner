@@ -167,6 +167,17 @@ class ScannedSampleDB():
             [session]
         ).fetchall()
         return result
+
+    def get_items_registered_in_session(self, session):
+        result = self.db.execute(
+            """
+            SELECT item, sample_type, box, position, scanned_datetime
+            FROM registered_item
+            WHERE session = ?
+            """,
+            [session]
+        ).fetchall()
+        return result
     
     def get_items_not_scanned_in_session(self, session):
         result = self.db.execute(
@@ -211,6 +222,22 @@ class ScannedSampleDB():
                 outfile.write(";{}; {}\n".format(
                     item[0], item[1],
                 ))
+    
+    def export_register_report(self, report_filename, session_id=None):
+        if not session_id:
+            session_id = self.session_id
+        logging.info("Exporting {} to {}".format(
+            session_id, report_filename
+        ))
+        registered_items = self.get_items_registered_in_session(session_id)
+        with open(report_filename, 'w') as outfile:
+            outfile.write("Item;Sample_type;Box;Position;Datetime\n")
+            for item in registered_items:
+                outfile.write("{};{};{};{};{}\n".format(
+                    item[0], item[1], item[2], item[3], item[4]
+                ))
+
+
 
 
 class SampleList():
