@@ -1,7 +1,7 @@
 """Scanned sample DB (sqlite3) and Sample List classes."""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from pathlib import Path
 from uuid import uuid1
@@ -37,6 +37,7 @@ class ScannedSampleDB():
             DROP TABLE IF EXISTS session;
             DROP TABLE IF EXISTS item;
             DROP TABLE IF EXISTS scanned_item;
+            DROP TABLE IF EXISTS registered_item;
             CREATE TABLE session (
                 id TEXT PRIMARY KEY,
                 filename TEXT,
@@ -55,14 +56,23 @@ class ScannedSampleDB():
                 item TEXT,
                 scanned_datetime TEXT,
                 FOREIGN KEY(session) REFERENCES session(id)
+            );
+            CREATE TABLE registered_item (
+                session TEXT,
+                item TEXT,
+                sample_type TEXT,
+                box TEXT,
+                position TEXT,
+                scanned_datetime TEXT,
+                FOREIGN KEY(session) REFERENCES session(id)
             )
             """
         )
         self.db.commit()
 
-    def register_session(self, filename):
+    def create_session(self, filename):
         """
-        Register a session.
+        Create and store a session.
         """
         self.session_id = str(uuid1())
         self.session_datetime = datetime.now().strftime(DATETIME_FMT)
@@ -78,9 +88,9 @@ class ScannedSampleDB():
         )
         self.db.commit()
 
-    def register_items(self, itemlists):
+    def store_search_items(self, itemlists):
         """
-        Register items parsed from a potentially multi-column input file.
+        Store search items parsed from a potentially multi-column input file.
         """
         total_items = 0
         for column, items in itemlists.items():
@@ -126,13 +136,23 @@ class ScannedSampleDB():
 
         return item
 
-    def register_scanned_item(self, item):
+    def store_scanned_item(self, item):
         self.db.execute(
             """
             INSERT INTO scanned_item
             VALUES (?, ?, ?, ?)
             """,
             (item.id, self.session_id, item.item, datetime.now().strftime(DATETIME_FMT))
+        )
+        self.db.commit()
+    
+    def register_scanned_item(self, item, sample_type, box, position=""):
+        self.db.execute(
+            """
+            INSERT INTO registered_item
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (self.session_id, item, sample_type, box, position, datetime.now().strftime(DATETIME_FMT))
         )
         self.db.commit()
     
@@ -143,6 +163,17 @@ class ScannedSampleDB():
             FROM scanned_item AS si
             JOIN item AS i
             WHERE si.id = i.id AND si.session = ?
+            """,
+            [session]
+        ).fetchall()
+        return result
+
+    def get_items_registered_in_session(self, session):
+        result = self.db.execute(
+            """
+            SELECT item, sample_type, box, position, scanned_datetime
+            FROM registered_item
+            WHERE session = ?
             """,
             [session]
         ).fetchall()
@@ -191,6 +222,20 @@ class ScannedSampleDB():
                 outfile.write(";{}; {}\n".format(
                     item[0], item[1],
                 ))
+    
+    def export_register_report(self, report_filename, session_id=None):
+        if not session_id:
+            session_id = self.session_id
+        logging.info("Exporting {} to {}".format(
+            session_id, report_filename
+        ))
+        registered_items = self.get_items_registered_in_session(session_id)
+        with open(report_filename, 'w') as outfile:
+            outfile.write("Item;Sample_type;Box;Position;Datetime\n")
+            for item in registered_items:
+                outfile.write("{};{};{};{};{}\n".format(
+                    item[0], item[1], item[2], item[3], item[4]
+                ))
 
 
 class SampleList():
@@ -223,7 +268,7 @@ class SampleList():
             logging.info("Found %s, assuming whitespace separated", self.filename)
             items = pd.read_csv(self.filename, header=header, engine="python", sep=r'\s+')
         logging.info("Data shape is (rows, columns): %s", items.shape)
-        self.total_items = self.db.register_items(items.to_dict(orient="list"))
+        self.total_items = self.db.store_search_items(items.to_dict(orient="list"))
 
     @staticmethod
     def scan_fluidx_list(fluidx_file):

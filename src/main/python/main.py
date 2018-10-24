@@ -2,7 +2,7 @@
 """CTMR list scanner"""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "0.2.0b"
+__version__ = "0.4.0b"
 
 from datetime import datetime
 from pathlib import Path
@@ -63,7 +63,7 @@ class MainWindow(QWidget):
         self.scantype_combo = QComboBox()
         self.scantype_combo.addItems([
             "Search: Search for samples in list(s)",
-            #"Register: Create sample registration list(s)",  # Disabled until implemented
+            "Register: Create sample registration list(s)",
         ])
         self.scantype_combo.currentTextChanged.connect(self.select_scantype)
 
@@ -119,6 +119,9 @@ class MainWindow(QWidget):
         ])
         self._load_register_fluidx_csv_button = QPushButton("Load FluidX CSV")
         self._load_register_fluidx_csv_button.clicked.connect(self.load_register_fluidx)
+        self._select_sample_type_label = QLabel("Select sample type:")
+        self._select_sample_box_label = QLabel("Select box name:")
+        self._register_box = QLineEdit(placeholderText="Box name")
         self._register_scanfield = QLineEdit(placeholderText="Scan/type item ID")
         register_scan_button = QPushButton("Register item")
         register_scan_button.clicked.connect(self.register_scanned_item)
@@ -126,10 +129,15 @@ class MainWindow(QWidget):
         register_fluidx_layout = QFormLayout()
         register_fluidx_layout.addRow("Select FluidX CSV:", self._register_fluidx_csv_button)
         register_fluidx_layout.addRow("Load FluidX CSV:", self._load_register_fluidx_csv_button)
-        register_fluidx_layout.addRow("Select sample type:", self._sample_type)
+        register_sample_type_hbox = QHBoxLayout()
+        register_sample_type_hbox.addWidget(self._select_sample_type_label)
+        register_sample_type_hbox.addWidget(self._sample_type)
+        register_sample_type_hbox.addWidget(self._select_sample_box_label)
+        register_sample_type_hbox.addWidget(self._register_box)
         register_scan_hbox = QHBoxLayout()
         register_scan_hbox.addWidget(self._register_scanfield)
         register_scan_hbox.addWidget(register_scan_button)
+        register_fluidx_layout.addRow(register_sample_type_hbox)
         register_fluidx_layout.addRow(register_scan_hbox)
         self._register_fluidx_group = QGroupBox("Register: Create sample registration lists")
         self._register_fluidx_group.setLayout(register_fluidx_layout)
@@ -192,6 +200,7 @@ class MainWindow(QWidget):
             self._register_fluidx_group.show()
             self._search_progress.hide()
             self._session_log_group.show()
+            self.db.create_session("REGISTRATION")
     
     def select_search_list(self):
         self.search_list, _ = QFileDialog.getOpenFileName(self, "Select search list")
@@ -200,7 +209,7 @@ class MainWindow(QWidget):
     
     def load_search_list(self):
         if Path(self.search_list).is_file():
-            self.db.register_session(self.search_list)
+            self.db.create_session(self.search_list)
             self.sample_list = SampleList(
                 self.search_list,
                 self.db,
@@ -236,7 +245,7 @@ class MainWindow(QWidget):
     
     def search_scanned_item(self, scanned_item):
         item = self.db.find_item(scanned_item)
-        self.db.register_scanned_item(item)
+        self.db.store_scanned_item(item)
 
         # Update progressbar
         scanned_items = self.db.get_items_scanned_in_session(self.db.session_id)
@@ -252,9 +261,13 @@ class MainWindow(QWidget):
         return item
 
     def register_scanned_item(self):
-        self.session_log("Registering item '{}' of type '{}'".format(
-            self._register_scanfield.text(), self._sample_type.currentText()
+        item = self._register_scanfield.text()
+        sample_type = self._sample_type.currentText()
+        box = self._register_box.text()
+        self.session_log("Registering item '{}' of type '{}' into box '{}'".format(
+            item, sample_type, box
         ))
+        self.db.register_scanned_item(item, sample_type, box)
         self._register_scanfield.setText("")
     
     def select_search_fluidx(self):
@@ -288,8 +301,27 @@ class MainWindow(QWidget):
                 ))
 
     def load_register_fluidx(self):
-        if self.fluidx:
-            self.session_log("Loading FluidX CSV: '{}'".format(self.fluidx))
+        if not Path(self.fluidx).is_file():
+            self.session_log("ERROR: Cannot load FluidX file")
+            return
+
+        sample_type = self._sample_type.currentText()
+        self.session_log("Registering items from FluidX CSV: '{}' as sample type '{}'".format(
+                self.fluidx, sample_type
+        ))
+
+        def scan_fluidx_list(fluidx_file):
+            import pandas as pd
+            items = pd.read_csv(fluidx_file, header=None)
+            self.session_log("FluidX shape is (rows, columns): {}".format(items.shape))
+            return items.values.tolist()
+
+        fluidx_items = scan_fluidx_list(self.fluidx)
+        for position, barcode, _, rack_id in fluidx_items:
+            self.db.register_scanned_item(barcode, sample_type, rack_id, position)
+            self.session_log("Registered item '{}' of type '{}' in box '{}' at position '{}'".format(
+                barcode, sample_type, rack_id, position
+            ))
     
     def session_log(self, message):
         self._session_log.append("{datetime}: {message}".format(
@@ -298,19 +330,31 @@ class MainWindow(QWidget):
         ))
     
     def save_report(self):
-        if not self.search_list:
+        selected_scantype = self.scantype_combo.currentText()
+        if selected_scantype == "Search: Search for samples in list(s)" and not self.search_list:
             self.session_log("ERROR: Cannot save report without first loading search list.")
             return
+
         outfolder = QFileDialog.getExistingDirectory(self, "Select directory to save report to")
+
         if Path(outfolder).is_dir():
-            input_stem = Path(self.search_list).stem
+            if selected_scantype == "Register: Create sample registration list(s)":
+                input_stem = "Registered_samples"
+            else:
+                input_stem = Path(self.search_list).stem
+
             fn_datetime = self.db.session_datetime.replace(":", "-").replace(" ", "_")
             session_basename = Path("{}_{}_{}".format(
                 fn_datetime, self.db.session_id, input_stem,
             ))
             session_report = outfolder / session_basename.with_suffix(".csv")
-            self.db.export_session_report(str(session_report))
+
+            if selected_scantype == "Register: Create sample registration list(s)":
+                self.db.export_register_report(str(session_report))
+            else:
+                self.db.export_session_report(str(session_report))
             self.session_log("Saved scanning session report to: {}".format(session_report))
+
             session_log = outfolder / session_basename.with_suffix(".log")
             with open(str(session_log), 'w') as outf:
                 outf.write(self._session_log.toPlainText())
@@ -318,7 +362,7 @@ class MainWindow(QWidget):
             self._session_saved = True
         else:
             self.session_log("ERROR: Could not save report to {}".format(outfolder))
-    
+
     def export_sample_list(self):
         self.export_old_session_window = ExportOldSessionWindow(self, dbfile=self.dbfile)
         self.export_old_session_window.show()
