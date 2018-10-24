@@ -56,13 +56,13 @@ class ScannedSampleDB():
                 item TEXT,
                 scanned_datetime TEXT,
                 FOREIGN KEY(session) REFERENCES session(id)
-            )
+            );
             CREATE TABLE registered_item (
-                id INTEGER,
                 session TEXT,
                 item TEXT,
                 sample_type TEXT,
                 box TEXT,
+                position TEXT,
                 scanned_datetime TEXT,
                 FOREIGN KEY(session) REFERENCES session(id)
             )
@@ -143,6 +143,16 @@ class ScannedSampleDB():
             VALUES (?, ?, ?, ?)
             """,
             (item.id, self.session_id, item.item, datetime.now().strftime(DATETIME_FMT))
+        )
+        self.db.commit()
+    
+    def register_scanned_item(self, item, sample_type, box, position=""):
+        self.db.execute(
+            """
+            INSERT INTO registered_item
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (self.session_id, item, sample_type, box, position, datetime.now().strftime(DATETIME_FMT))
         )
         self.db.commit()
     

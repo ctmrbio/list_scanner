@@ -260,9 +260,13 @@ class MainWindow(QWidget):
         return item
 
     def register_scanned_item(self):
-        self.session_log("Registering item '{}' of type '{}'".format(
-            self._register_scanfield.text(), self._sample_type.currentText()
+        item = self._register_scanfield.text()
+        sample_type = self._sample_type.currentText()
+        box = self._register_box.text()
+        self.session_log("Registering item '{}' of type '{}' into box '{}'".format(
+            item, sample_type, box
         ))
+        self.db.register_scanned_item(item, sample_type, box)
         self._register_scanfield.setText("")
     
     def select_search_fluidx(self):
