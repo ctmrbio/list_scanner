@@ -2,7 +2,7 @@
 """CTMR list scanner"""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "0.2.0b"
+__version__ = "0.3.0b"
 
 from datetime import datetime
 from pathlib import Path
@@ -63,7 +63,7 @@ class MainWindow(QWidget):
         self.scantype_combo = QComboBox()
         self.scantype_combo.addItems([
             "Search: Search for samples in list(s)",
-            #"Register: Create sample registration list(s)",  # Disabled until implemented
+            "Register: Create sample registration list(s)",
         ])
         self.scantype_combo.currentTextChanged.connect(self.select_scantype)
 
@@ -119,6 +119,9 @@ class MainWindow(QWidget):
         ])
         self._load_register_fluidx_csv_button = QPushButton("Load FluidX CSV")
         self._load_register_fluidx_csv_button.clicked.connect(self.load_register_fluidx)
+        self._select_sample_type_label = QLabel("Select sample type:")
+        self._select_sample_box_label = QLabel("Select box name:")
+        self._register_box = QLineEdit(placeholderText="Box name")
         self._register_scanfield = QLineEdit(placeholderText="Scan/type item ID")
         register_scan_button = QPushButton("Register item")
         register_scan_button.clicked.connect(self.register_scanned_item)
@@ -126,10 +129,15 @@ class MainWindow(QWidget):
         register_fluidx_layout = QFormLayout()
         register_fluidx_layout.addRow("Select FluidX CSV:", self._register_fluidx_csv_button)
         register_fluidx_layout.addRow("Load FluidX CSV:", self._load_register_fluidx_csv_button)
-        register_fluidx_layout.addRow("Select sample type:", self._sample_type)
+        register_sample_type_hbox = QHBoxLayout()
+        register_sample_type_hbox.addWidget(self._select_sample_type_label)
+        register_sample_type_hbox.addWidget(self._sample_type)
+        register_sample_type_hbox.addWidget(self._select_sample_box_label)
+        register_sample_type_hbox.addWidget(self._register_box)
         register_scan_hbox = QHBoxLayout()
         register_scan_hbox.addWidget(self._register_scanfield)
         register_scan_hbox.addWidget(register_scan_button)
+        register_fluidx_layout.addRow(register_sample_type_hbox)
         register_fluidx_layout.addRow(register_scan_hbox)
         self._register_fluidx_group = QGroupBox("Register: Create sample registration lists")
         self._register_fluidx_group.setLayout(register_fluidx_layout)
