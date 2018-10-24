@@ -208,7 +208,7 @@ class MainWindow(QWidget):
     
     def load_search_list(self):
         if Path(self.search_list).is_file():
-            self.db.register_session(self.search_list)
+            self.db.create_session(self.search_list)
             self.sample_list = SampleList(
                 self.search_list,
                 self.db,

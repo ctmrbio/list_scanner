@@ -70,9 +70,9 @@ class ScannedSampleDB():
         )
         self.db.commit()
 
-    def register_session(self, filename):
+    def create_session(self, filename):
         """
-        Register a session.
+        Create and store a session.
         """
         self.session_id = str(uuid1())
         self.session_datetime = datetime.now().strftime(DATETIME_FMT)
