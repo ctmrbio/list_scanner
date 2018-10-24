@@ -1,7 +1,7 @@
 """Scanned sample DB (sqlite3) and Sample List classes."""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 from pathlib import Path
 from uuid import uuid1
@@ -236,8 +236,6 @@ class ScannedSampleDB():
                 outfile.write("{};{};{};{};{}\n".format(
                     item[0], item[1], item[2], item[3], item[4]
                 ))
-
-
 
 
 class SampleList():

@@ -2,7 +2,7 @@
 """CTMR list scanner"""
 __author__ = "Fredrik Boulund"
 __date__ = "2018"
-__version__ = "0.3.0b"
+__version__ = "0.4.0b"
 
 from datetime import datetime
 from pathlib import Path
