@@ -300,8 +300,27 @@ class MainWindow(QWidget):
                 ))
 
     def load_register_fluidx(self):
-        if self.fluidx:
-            self.session_log("Loading FluidX CSV: '{}'".format(self.fluidx))
+        if not Path(self.fluidx).is_file():
+            self.session_log("ERROR: Cannot load FluidX file")
+            return
+
+        sample_type = self._sample_type.currentText()
+        self.session_log("Registering items from FluidX CSV: '{}' as sample type '{}'".format(
+                self.fluidx, sample_type
+        ))
+
+        def scan_fluidx_list(fluidx_file):
+            import pandas as pd
+            items = pd.read_csv(fluidx_file, header=None)
+            self.session_log("FluidX shape is (rows, columns): {}".format(items.shape))
+            return items.values.tolist()
+
+        fluidx_items = scan_fluidx_list(self.fluidx)
+        for position, barcode, _, rack_id in fluidx_items:
+            self.db.register_scanned_item(barcode, sample_type, rack_id, position)
+            self.session_log("Registered item '{}' of type '{}' in box '{}' at position '{}'".format(
+                barcode, sample_type, rack_id, position
+            ))
     
     def session_log(self, message):
         self._session_log.append("{datetime}: {message}".format(
